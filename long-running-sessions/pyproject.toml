@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "long-running-sessions"
+version = "0.1.0"
+description = ""
+authors = ["Vasek Mlejnsky <vasek.mlejnsky@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.104.1"
+python-dotenv = "^1.0.0"
+e2b = "^0.13.10"
+uvicorn = "^0.24.0.post1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+start = 'long_running_sessions.main:main'
