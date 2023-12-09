@@ -14,7 +14,7 @@ load_dotenv()
 app = FastAPI()
 
 # We keep a dictionary of active sandboxes in memory.
-# As long as the sandbox objects are in the memory, they are pinging the E2B servers to keep them.
+# As long as the sandbox objects are in the memory, they are pinging the E2B servers to keep them alive.
 # Keep in mind that E2B sandbox won't close (and stays alive on our servers) if you don't close it explicitly via `sandbox.close()`.
 # To close sandboxes automatically after a certain time, please take a look at https://e2b.dev/docs/sandbox/api/reconnect - the logic of the server would be a little different though.
 active_sandboxes = {}
