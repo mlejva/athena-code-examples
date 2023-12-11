@@ -40,6 +40,7 @@ def write_file(path, content):
 
 def parse_gpt_response(response):
   message = response.choices[0].message
+
   if message.function_call != None:
     func_name = message.function_call.name
     args = message.function_call.arguments
