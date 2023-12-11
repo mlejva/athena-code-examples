@@ -1,6 +1,7 @@
 def system_prompt(s3_bucket_content, fake_bucket_root):
-  # TODO: Distinguish between files and dirs
-  initial_content = "\n".join(s3_bucket_content)
+  # TODO: Update
+  # initial_content = "\n".join(s3_bucket_content)
+  initial_content = []
 
   prompt=f"""You have access to a safe cloud computer.
 There, you can use filesystem (read, write, list), terminal (run any command), run python code, and you're connected to the internet.
