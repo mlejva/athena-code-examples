@@ -2,29 +2,6 @@ import s3_filesystem.bucket as bucket
 
 FAKE_BUCKET_ROOT = "/home/user/mnt"
 
-# We keep a "virtual filesystem" representing the current content of the S3 bucket.
-# Pre-signed URLs are for manipulating files in the S3 bucket so we can't just list the content of the bucket.
-# Additionaly, buckets don't have a concept of directories, so we need to keep track of that information oruselves.
-bucket_content = {
-  "/": [
-    "file1.txt",
-    "file2.txt",
-    "dir1",
-    "dir2",
-  ],
-  "/dir1": [
-    "file3.txt",
-    "file4.txt",
-  ],
-  "/dir2": [
-    "file5.txt",
-    "dir3",
-  ],
-  "/dir2/dir3": [
-    "file6.txt",
-  ],
-}
-
 functions_shema = [
   {
       "name": "read_file",

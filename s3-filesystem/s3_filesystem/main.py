@@ -11,7 +11,6 @@ from s3_filesystem.functions import (
     read_file,
     write_file,
     list_dir,
-    bucket_content
 )
 from s3_filesystem.system_prompt import system_prompt
 
@@ -45,7 +44,7 @@ def parse_gpt_response(response):
     print(message.content)
 
 def main():
-  prompt = system_prompt(bucket_content, FAKE_BUCKET_ROOT)
+  prompt = system_prompt([], FAKE_BUCKET_ROOT)
   response = client.chat.completions.create(
     model="gpt-4-1106-preview",
     messages=[
