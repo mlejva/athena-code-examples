@@ -1,0 +1,21 @@
+services:
+  # server:
+  #   build: ./server
+  #   depends_on:
+  #     - postgres
+  #   ports:
+  #     - "8000:8000"
+  # webapp:
+  #   build: ./webapp
+  #   depends_on:
+  #     - server
+  #   ports:
+  #     - "3000:3000"
+  postgres:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
