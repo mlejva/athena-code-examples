@@ -63,10 +63,9 @@ export default function Home() {
 
         <div className="flex flex-col items-start justify-start gap-2">
           <h1 className="text-xl font-semibold">Execute Python in sandbox</h1>
-          <div className="w-[320px] flex items-center justify-between gap-2">
-            <input
-              className="h-8 rounded w-full px-1 font-mono"
-              type="text"
+          <div className="w-[640px] flex flex-col items-start justify-start gap-2">
+            <textarea
+              className="rounded w-full p-2 font-mono w-full h-[300px] scroll"
               value={command}
               onChange={(e) => setCommand(e.target.value)}
             />

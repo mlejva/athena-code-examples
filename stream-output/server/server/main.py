@@ -1,5 +1,6 @@
 import uvicorn
 import asyncio
+import sys
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -12,6 +13,7 @@ load_dotenv()
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
 
+
 async def handle_workload(workload):
     print("Sending to client")
     if connection is None:
@@ -19,6 +21,7 @@ async def handle_workload(workload):
     else:
         print("Sending to client")
         await connection.send_json(workload)
+
 
 def handle_sandbox_stdout(out: ProcessMessage):
     print("[sandbox stdout]", out.line)
@@ -29,6 +32,7 @@ def handle_sandbox_stdout(out: ProcessMessage):
     }
     wq.schedule(handle_workload(data_out))
 
+
 def handle_sandbox_stderr(out: ProcessMessage):
     print("[sandbox stderr]", out.line)
     data_out = {
@@ -37,6 +41,7 @@ def handle_sandbox_stderr(out: ProcessMessage):
         "timestamp": out.timestamp,
     }
     wq.schedule(handle_workload(data_out))
+
 
 app = FastAPI()
 wq = WorkQueue()
@@ -48,6 +53,7 @@ sandbox = CodeInterpreter(
     on_stdout=handle_sandbox_stdout,
     on_stderr=handle_sandbox_stderr,
 )
+
 
 @app.get("/")
 async def read_root():
@@ -75,8 +81,15 @@ async def websocket_endpoint(websocket: WebSocket):
         print("Disconnected")
         connection = None
 
-def main():
-    config = uvicorn.Config(app, loop=loop, host="0.0.0.0", port=8000)
-    server = uvicorn.Server(config)
 
-    loop.run_until_complete(server.serve())
+def main():
+    try:
+        config = uvicorn.Config(app, loop=loop, host="0.0.0.0", port=8000)
+        server = uvicorn.Server(config)
+
+        loop.run_until_complete(server.serve())
+    except KeyboardInterrupt:
+        print("Interrupt")
+        loop.run_until_complete(server.shutdown())
+        loop.close()
+        sys.exit(1)
