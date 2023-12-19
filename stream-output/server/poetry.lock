@@ -307,13 +307,13 @@ files = [
 
 [[package]]
 name = "e2b"
-version = "0.13.13"
+version = "0.13.15"
 description = "E2B SDK that give agents cloud environments"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "e2b-0.13.13-py3-none-any.whl", hash = "sha256:091ed385c2bc0985b913cb7c6212a810edb1fc519665f91d64f48dca91eb29e2"},
-    {file = "e2b-0.13.13.tar.gz", hash = "sha256:7dea4330cfb1bb881b8ba00573af9fb1520204da70c442e15d09bc3f1c629e64"},
+    {file = "e2b-0.13.15-py3-none-any.whl", hash = "sha256:4deca0c571fbd1ca34dbe4fd4db042becf8b772bd71cb79e5a49d8d153314199"},
+    {file = "e2b-0.13.15.tar.gz", hash = "sha256:bc47f043155480ee0993c3ae8229c1b456c972547f545386771e48bcf14c76a6"},
 ]
 
 [package.dependencies]
@@ -991,4 +991,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "c9210f206b5edda477aa59331b2ff16653a8a4619b3c7b0eac2495cf701a1e5f"
+content-hash = "a1e11a5d9e5763bf9bc8d9530205e31045ed0cfb122ef111ea74714681e4f2b6"
