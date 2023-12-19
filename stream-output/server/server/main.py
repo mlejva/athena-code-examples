@@ -2,6 +2,7 @@ import uvicorn
 import asyncio
 import sys
 
+from typing import Any
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from e2b import CodeInterpreter, ProcessMessage
@@ -14,33 +15,33 @@ loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
 
 
-async def handle_workload(workload):
-    print("Sending to client")
+async def handle_output(output: dict[str, Any]):
+    print("Handling output", output)
     if connection is None:
         print("Saving to DB")
     else:
         print("Sending to client")
-        await connection.send_json(workload)
+        await connection.send_json(output)
 
 
 def handle_sandbox_stdout(out: ProcessMessage):
-    print("[sandbox stdout]", out.line)
+    print("[sandbox stdout]", out)
     data_out = {
         "type": "stdout",
         "line": out.line,
         "timestamp": out.timestamp,
     }
-    wq.schedule(handle_workload(data_out))
+    wq.schedule(handle_output(data_out))
 
 
 def handle_sandbox_stderr(out: ProcessMessage):
-    print("[sandbox stderr]", out.line)
+    print("[sandbox stderr]", out)
     data_out = {
-        "type": "stdout",
+        "type": "stderr",
         "line": out.line,
         "timestamp": out.timestamp,
     }
-    wq.schedule(handle_workload(data_out))
+    wq.schedule(handle_output(data_out))
 
 
 app = FastAPI()
@@ -53,7 +54,6 @@ sandbox = CodeInterpreter(
     on_stdout=handle_sandbox_stdout,
     on_stderr=handle_sandbox_stderr,
 )
-
 
 @app.get("/")
 async def read_root():
@@ -74,7 +74,8 @@ async def websocket_endpoint(websocket: WebSocket):
         async for data in websocket.iter_json():
             command = data["command"]
             print("Received command", command)
-            sandbox.run_python(command)
+            await asyncio.to_thread(sandbox.run_python, command)
+            # sandbox.run_python(command)
             print("Command executed")
     except WebSocketDisconnect:
         # TODO: Redirect sandbox's stdout and stderr to DB
