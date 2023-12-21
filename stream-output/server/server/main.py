@@ -1,3 +1,4 @@
+from multiprocessing import connection
 import uvicorn
 import asyncio
 from typing import Any, Dict
@@ -59,8 +60,6 @@ async def get_chat_session_outputs(session_id: str):
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
-    global connection
-
     await websocket.accept()
 
     print(f"Session '{session_id}' connected", websocket, websocket.client)
@@ -71,10 +70,15 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             await sess_manager.create_new_session(websocket, user_id, session_id)
         elif message_type == "code":
             code = data["code"]
-            await asyncio.to_thread(sess_manager.run_code, session_id, code)
 
-    print(f"Session '{session_id} disconnected")
-    await sess_manager.close_session(session_id)
+            async def handle_sandbox():
+                await asyncio.to_thread(sess_manager.run_code, session_id, code)
+
+                if not sess_manager.active_connections.get(session_id):
+                    await sess_manager.close_session(session_id)
+                    print(f"Session '{session_id} disconnected")
+
+            asyncio.ensure_future(handle_sandbox())    
 
 
 def main():

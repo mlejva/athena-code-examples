@@ -1,5 +1,5 @@
 import random
-from typing import Dict
+from typing import Dict, Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from e2b import CodeInterpreter, ProcessMessage, Process
 
@@ -14,7 +14,7 @@ class SessionManager:
     def __init__(self) -> None:
         self.active_connections: Dict[str, WebSocket] = {}
         self.active_sandboxes: Dict[str, CodeInterpreter] = {}
-        self.session_outputs: Dict[str, list[Dict[str, any]]] = {}
+        self.session_outputs: Dict[str, list[Dict[str, Any]]] = {}
         self.wq = WorkQueue()
 
     async def _stream_output(self, session_id: str, output: ProcessMessage, type: str):
