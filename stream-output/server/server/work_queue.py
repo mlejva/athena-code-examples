@@ -1,5 +1,5 @@
 from asyncio import Queue, ensure_future
-from typing import Any, Callable, Coroutine
+from typing import Any, Coroutine
 
 from typing import Coroutine
 
@@ -24,7 +24,7 @@ class WorkQueue():
     async def flush(self):
         await self._queue.join()
 
-    def schedule(self, workload: Callable[[Any], Coroutine[Any, Any, Any]]):
+    def schedule(self, workload: Coroutine[Any, Any, Any]):
         self._queue.put_nowait(workload)
 
     def close(self):

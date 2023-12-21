@@ -1,7 +1,8 @@
-import random
+import asyncio
+
 from typing import Dict, Any
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from e2b import CodeInterpreter, ProcessMessage, Process
+from fastapi import WebSocket
+from e2b import CodeInterpreter, ProcessMessage
 
 from server.work_queue import WorkQueue
 from server.db import (
@@ -80,7 +81,7 @@ class SessionManager:
             sandbox.close()
             del self.active_sandboxes[session_id]
 
-    def run_code(self, session_id: str, code: str):
+    async def run_code(self, session_id: str, code: str):
         sandbox = self.active_sandboxes.get(session_id)
         if sandbox is None:
             raise Exception(
@@ -90,5 +91,9 @@ class SessionManager:
         print("Received code", code)
         # We move run_python to a thread to avoid blocking the event loop
         # because `run_python` is a synchronous operation.
-        sandbox.run_python(code)
+        await asyncio.to_thread(sandbox.run_python, code)
         print("Code executed")
+
+        if not self.active_connections.get(session_id):
+            await self.close_session(session_id)
+            print(f"Session '{session_id} disconnected")

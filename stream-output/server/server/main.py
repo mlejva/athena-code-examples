@@ -1,12 +1,12 @@
-from multiprocessing import connection
 import uvicorn
 import asyncio
-from typing import Any, Dict
 
+from typing import Dict
 from dotenv import load_dotenv
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from e2b import CodeInterpreter, ProcessMessage
+from e2b import CodeInterpreter
+
 from server.db import (
     create_outputs_table,
     create_sessions_table,
@@ -70,16 +70,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             await sess_manager.create_new_session(websocket, user_id, session_id)
         elif message_type == "code":
             code = data["code"]
-
-            async def handle_sandbox():
-                await asyncio.to_thread(sess_manager.run_code, session_id, code)
-
-                if not sess_manager.active_connections.get(session_id):
-                    await sess_manager.close_session(session_id)
-                    print(f"Session '{session_id} disconnected")
-
-            asyncio.ensure_future(handle_sandbox())    
-
+            asyncio.ensure_future(sess_manager.run_code(session_id, code))
+    
+    del sess_manager.active_connections[session_id]
 
 def main():
     create_outputs_table()
