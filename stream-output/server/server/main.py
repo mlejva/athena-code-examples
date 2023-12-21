@@ -1,96 +1,85 @@
 import uvicorn
 import asyncio
-import sys
+from typing import Any, Dict
 
-from typing import Any
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from e2b import CodeInterpreter, ProcessMessage
+from server.db import (
+    create_outputs_table,
+    create_sessions_table,
+    get_user_sessions,
+    get_session_outputs,
+)
 
-from server.work_queue import WorkQueue
+from server.session_manager import SessionManager
 
 load_dotenv()
 
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
 
-
-async def handle_output(output: dict[str, Any]):
-    print("Handling output", output)
-    if connection is None:
-        print("Saving to DB")
-    else:
-        print("Sending to client")
-        await connection.send_json(output)
-
-
-def handle_sandbox_stdout(out: ProcessMessage):
-    print("[sandbox stdout]", out)
-    data_out = {
-        "type": "stdout",
-        "line": out.line,
-        "timestamp": out.timestamp,
-    }
-    wq.schedule(handle_output(data_out))
-
-
-def handle_sandbox_stderr(out: ProcessMessage):
-    print("[sandbox stderr]", out)
-    data_out = {
-        "type": "stderr",
-        "line": out.line,
-        "timestamp": out.timestamp,
-    }
-    wq.schedule(handle_output(data_out))
-
-
 app = FastAPI()
-wq = WorkQueue()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+sess_manager = SessionManager()
 
+# To keep things simple, we only
 # To keep things simple, we'll have 1 sandbox and 1 websocket connection per server instance and
 # We want to show how to send sandbox's output both to the client via WS and to DB, not management of multiple sandboxes and WS connections.
-connection: WebSocket = None
-sandbox = CodeInterpreter(
-    on_stdout=handle_sandbox_stdout,
-    on_stderr=handle_sandbox_stderr,
-)
+# connection: WebSocket = None
+# sandbox: CodeInterpreter = None
 
-@app.get("/")
-async def read_root():
-    content = sandbox.filesystem.list("/")
-    print(content)
-    return {"Hello": "World"}
+# Note: Dicts aren't thread safe.
+# Dict of connections belonging to active sessions
+active_connections: Dict[str, WebSocket] = {}
+# Dict of sandboxes belonging to active sessions
+active_sandboxes: Dict[str, CodeInterpreter] = {}
+
+# TODO
+session_outputs = []
 
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+@app.get("/{user_id}/sessions")
+async def read_sessions(user_id: str):
+    """Returns all past sessions saved in DB for a give user"""
+    return {"sessions": get_user_sessions(user_id)}
+
+
+@app.get("/sessions/{session_id}")
+async def get_chat_session_outputs(session_id: str):
+    return {"outputs": get_session_outputs(session_id)}
+
+
+@app.websocket("/ws/{session_id}")
+async def websocket_endpoint(websocket: WebSocket, session_id: str):
     global connection
 
     await websocket.accept()
-    connection = websocket
 
-    print("Client connected", websocket, websocket.client)
-    try:
-        async for data in websocket.iter_json():
-            command = data["command"]
-            print("Received command", command)
-            await asyncio.to_thread(sandbox.run_python, command)
-            # sandbox.run_python(command)
-            print("Command executed")
-    except WebSocketDisconnect:
-        # TODO: Redirect sandbox's stdout and stderr to DB
-        print("Disconnected")
-        connection = None
+    print(f"Session '{session_id}' connected", websocket, websocket.client)
+    async for data in websocket.iter_json():
+        message_type = data["message_type"]
+        if message_type == "new_session":
+            user_id = data["user_id"]
+            await sess_manager.create_new_session(websocket, user_id, session_id)
+        elif message_type == "code":
+            code = data["code"]
+            await asyncio.to_thread(sess_manager.run_code, session_id, code)
+
+    print(f"Session '{session_id} disconnected")
+    await sess_manager.close_session(session_id)
 
 
 def main():
-    try:
-        config = uvicorn.Config(app, loop=loop, host="0.0.0.0", port=8000)
-        server = uvicorn.Server(config)
-
-        loop.run_until_complete(server.serve())
-    except KeyboardInterrupt:
-        print("Interrupt")
-        loop.run_until_complete(server.shutdown())
-        loop.close()
-        sys.exit(1)
+    create_outputs_table()
+    create_sessions_table()
+    config = uvicorn.Config(app, loop=loop, host="0.0.0.0", port=8000)
+    server = uvicorn.Server(config)
+    loop.run_until_complete(server.serve())
