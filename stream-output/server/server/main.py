@@ -5,14 +5,13 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
+from server.session_manager import SessionManager
 from server.db import (
     create_outputs_table,
     create_sessions_table,
     get_user_sessions,
     get_session_outputs,
 )
-
-from server.session_manager import SessionManager
 
 load_dotenv()
 
@@ -50,7 +49,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         message_type = data["message_type"]
         if message_type == "new_session":
             user_id = data["user_id"]
-            # TODO: Handle if a user reconnects to a previous session and the sandbox is still running -> user should start receiving output from the sandbox again.
+            # `ensure_session` handles if a user reconnects to a previous session and the sandbox is still running -> user should start receiving output from the sandbox again.
             await sess_manager.ensure_session(websocket, user_id, session_id)
         elif message_type == "code":
             code = data["code"]

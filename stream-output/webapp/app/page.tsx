@@ -31,7 +31,7 @@ export default function Home() {
   const [sessionID, setSessionID] = useState<string | null>(null)
   const [sessionStatus, setSessionStatus] = useState<string>('session_loading')
   const [previousSessions, setPreviousSessions] = useState<Session[]>([])
-  const [messages, setMessages] = useState<ProcessOutput[]>([])
+  const [sessionOutput, setSessionOutput] = useState<ProcessOutput[]>([])
   const [code, setCode] = useState(startingCode)
   const [ws, setWS] = useState<WebSocket | null>(null)
 
@@ -46,7 +46,7 @@ export default function Home() {
         line: data.line,
         timestamp: data.timestamp,
       }
-      setMessages((messages) => [...messages, out])
+      setSessionOutput((val) => [...val, out])
     } else {
       console.log('Unknown message type', data)
     }
@@ -116,7 +116,7 @@ export default function Home() {
       if (data['outputs'].length == 0) return
       const out: ProcessOutput[] = JSON.parse(data['outputs'][0][1])
       console.log('Session outputs', out)
-      setMessages(out)
+      setSessionOutput(out)
     })
   }, [])
 
@@ -188,7 +188,7 @@ export default function Home() {
 
           <div className="flex flex-col items-start justify-start gap-2">
             <h2 className="font-bold text-lg">Previous sessions</h2>
-            <span className="text-sm">Select a session to view its outputs</span>
+            <span className="text-sm">Select a session</span>
             <div className="flex flex-col items-start justify-start gap-2 max-h-[400px] overflow-y-auto w-full">
               {previousSessions.map((session) => (
                 <button
@@ -204,7 +204,7 @@ export default function Home() {
         <div className="flex flex-col items-start justify-start">
           <h2 className="font-bold text-lg">Output</h2>
           <div className="p-1 font-mono text-sm whitespace-pre">
-            {messages.map((message) => (
+            {sessionOutput.map((message) => (
               <>
                 {message.type === "stdout" && (
                   <div

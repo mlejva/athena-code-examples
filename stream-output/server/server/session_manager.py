@@ -41,9 +41,6 @@ class SessionManager:
         if connection is not None:
             await connection.send_json(serialized_output)
 
-    # def _handle_sandbox_output(self, session_id: str, out: ProcessMessage, type: str):
-    #     self.wq.schedule(self._stream_output(session_id, data_out))
-
     async def _create_new_session(
         self, connection: WebSocket, user_id: str, session_id: str
     ):
