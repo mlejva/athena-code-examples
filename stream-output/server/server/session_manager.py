@@ -53,6 +53,8 @@ class SessionManager:
         # In case there's already s sandbox, we want to close it first. This case shouldn't ever happen though.
         if sandbox is not None:
             sandbox.close()
+
+        # We're using a work queue for sandbox output so we don't block the main thread.
         self.active_sandboxes[session_id] = CodeInterpreter(
             on_stdout=lambda out: self.wq.schedule(
                 self._stream_output(session_id, out, "stdout")

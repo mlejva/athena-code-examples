@@ -3,7 +3,8 @@ from typing import Any, Coroutine
 
 from typing import Coroutine
 
-class WorkQueue():
+
+class WorkQueue:
     def __init__(self) -> None:
         self._queue: Queue[Coroutine] = Queue()
         self._worker = ensure_future(self._start())
