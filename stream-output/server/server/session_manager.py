@@ -44,7 +44,7 @@ class SessionManager:
     # def _handle_sandbox_output(self, session_id: str, out: ProcessMessage, type: str):
     #     self.wq.schedule(self._stream_output(session_id, data_out))
 
-    async def create_new_session(
+    async def _create_new_session(
         self, connection: WebSocket, user_id: str, session_id: str
     ):
         create_session(user_id, session_id)
@@ -68,18 +68,19 @@ class SessionManager:
         print(f"User '{user_id}' connected, starting a new session", session_id)
         await connection.send_json({"status": "session_created"})
 
-    async def close_session(self, session_id: str):
-        # Close the connection but close the sandbox only if there isn't a running process inside the sandbox.
+    async def ensure_session(
+        self, connection: WebSocket, user_id: str, session_id: str
+    ):
+        """Either creates a new session for a user or reconnects the user to an existing previous session."""
 
-        if (self.active_connections.get(session_id)) is not None:
-            del self.active_connections[session_id]
-        if (self.session_outputs.get(session_id)) is not None:
-            del self.session_outputs[session_id]
-
-        sandbox = self.active_sandboxes.get(session_id)
-        if sandbox is not None:
-            sandbox.close()
-            del self.active_sandboxes[session_id]
+        # If there's an existing sandbox for `session_id`, user is reconnecting to a previous session.
+        #   - We want to start sending the sandbox's output to the client.
+        # Else, we just create a new session for the user.
+        if (self.active_sandboxes.get(session_id)) is None:
+            await self._create_new_session(connection, user_id, session_id)
+        else:
+            # Since the sandbox exists, self.close_session() was never called, all we need to do is save the connection under this session id.
+            self.active_connections[session_id] = connection
 
     async def run_code(self, session_id: str, code: str):
         sandbox = self.active_sandboxes.get(session_id)
@@ -94,6 +95,19 @@ class SessionManager:
         await asyncio.to_thread(sandbox.run_python, code)
         print("Code executed")
 
+        # When we finish running code, we check if there's an active client connection.
+        # If not, we close the sandbox.
         if not self.active_connections.get(session_id):
             await self.close_session(session_id)
             print(f"Session '{session_id} disconnected")
+
+    async def close_session(self, session_id: str):
+        if (self.active_connections.get(session_id)) is not None:
+            del self.active_connections[session_id]
+        if (self.session_outputs.get(session_id)) is not None:
+            del self.session_outputs[session_id]
+
+        sandbox = self.active_sandboxes.get(session_id)
+        if sandbox is not None:
+            del self.active_sandboxes[session_id]
+            sandbox.close()

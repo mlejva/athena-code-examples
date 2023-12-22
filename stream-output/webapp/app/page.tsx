@@ -2,6 +2,7 @@
 import {
   useState,
   useEffect,
+  useCallback,
 } from 'react'
 
 
@@ -74,8 +75,8 @@ export default function Home() {
     ws.send(m)
   }
 
-  useEffect(function fetchPreviousSessions() {
-    fetch(`http://localhost:8000/${userID}/sessions`, {
+  const fetchPreviousSessions = useCallback((userID: string) => {
+    return fetch(`http://localhost:8000/${userID}/sessions`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -88,19 +89,18 @@ export default function Home() {
       }
     }).then(data => {
       console.log('Previous sessions', data)
-      setPreviousSessions(
-        // Extract session ID
-        data['sessions'].map((session: any) => ({
-          id: session[0],
-          timestamp: session[2],
-        }))
-      )
+      // Extract session ID
+      return data['sessions'].map((session: any) => ({
+        id: session[0],
+        timestamp: session[2],
+      }))
     })
   }, [])
 
-  useEffect(function fetchSessionOutputs() {
-    if (!sessionID) return
-    fetch(`http://localhost:8000/sessions/${sessionID}`, {
+  const fetchSessionOutputs = useCallback((sessID: string) => {
+    setSessionID(sessID)
+    setSessionStatus('session_loading')
+    fetch(`http://localhost:8000/sessions/${sessID}`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -118,27 +118,48 @@ export default function Home() {
       console.log('Session outputs', out)
       setMessages(out)
     })
-  }, [sessionID])
+  }, [])
 
 
-  useEffect(function connectWS() {
-    const sessID = generateShortID()
-
-    console.log('Connecting to WS')
-
+  const connect = useCallback((sessID: string) => {
+    console.log(`Connecting to "${sessID}"`)
     const websocket = new WebSocket(`ws://localhost:8000/ws/${sessID}`)
     websocket.onmessage = handleWSMessage
     websocket.onopen = () => handleWSConnOpen(websocket)
     setWS(websocket)
     setSessionID(sessID)
-
-    return () => {
-      console.log('Closing WS connection')
-      websocket.close()
-    }
+    return websocket
   }, [])
 
+  const disconnect = useCallback((ws: WebSocket) => {
+    console.log('Closing connection')
+    ws.close()
+  }, [])
 
+  const changeSession = useCallback((sessID: string) => {
+    console.log('Changing session to', sessID)
+    if (ws) {
+      disconnect(ws)
+    }
+    connect(sessID)
+    fetchSessionOutputs(sessID)
+  }, [connect, disconnect, ws, fetchSessionOutputs])
+
+  useEffect(function fetchPreviousSessionsEffect() {
+    fetchPreviousSessions(userID).then(sessions => {
+      setPreviousSessions(sessions)
+    })
+  }, [fetchPreviousSessions])
+
+
+  useEffect(function connectWS() {
+    const sessID = generateShortID()
+    const ws = connect(sessID)
+
+    return () => {
+      disconnect(ws)
+    }
+  }, [connect, disconnect])
 
 
   return (
@@ -173,7 +194,7 @@ export default function Home() {
                 <button
                   className="flex items-center gap-2 text-blue-500 hover:text-blue-700"
                   key={session.id}
-                  onClick={() => setSessionID(session.id)}
+                  onClick={() => changeSession(session.id)}
                 >{session.id} ({session.timestamp})</button>
               ))}
             </div>

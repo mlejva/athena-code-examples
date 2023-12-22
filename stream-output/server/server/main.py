@@ -1,11 +1,9 @@
 import uvicorn
 import asyncio
 
-from typing import Dict
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from e2b import CodeInterpreter
 
 from server.db import (
     create_outputs_table,
@@ -31,25 +29,10 @@ app.add_middleware(
 )
 sess_manager = SessionManager()
 
-# To keep things simple, we only
-# To keep things simple, we'll have 1 sandbox and 1 websocket connection per server instance and
-# We want to show how to send sandbox's output both to the client via WS and to DB, not management of multiple sandboxes and WS connections.
-# connection: WebSocket = None
-# sandbox: CodeInterpreter = None
-
-# Note: Dicts aren't thread safe.
-# Dict of connections belonging to active sessions
-active_connections: Dict[str, WebSocket] = {}
-# Dict of sandboxes belonging to active sessions
-active_sandboxes: Dict[str, CodeInterpreter] = {}
-
-# TODO
-session_outputs = []
-
 
 @app.get("/{user_id}/sessions")
 async def read_sessions(user_id: str):
-    """Returns all past sessions saved in DB for a give user"""
+    """Returns all past sessions saved in DB for a given user"""
     return {"sessions": get_user_sessions(user_id)}
 
 
@@ -67,12 +50,17 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         message_type = data["message_type"]
         if message_type == "new_session":
             user_id = data["user_id"]
-            await sess_manager.create_new_session(websocket, user_id, session_id)
+            # TODO: Handle if a user reconnects to a previous session and the sandbox is still running -> user should start receiving output from the sandbox again.
+            await sess_manager.ensure_session(websocket, user_id, session_id)
         elif message_type == "code":
             code = data["code"]
+            # Leave the task running in background.
+            # This will ensure that the code is running inside sandbox even when client is disconnected.
             asyncio.ensure_future(sess_manager.run_code(session_id, code))
-    
+
+    # Client got disconnected, remove the connection from active connections.
     del sess_manager.active_connections[session_id]
+
 
 def main():
     create_outputs_table()
